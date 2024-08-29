@@ -1,6 +1,8 @@
 # -----------------------------------------------------------------------------
 #
 # Python script for determining the relaxation modes in relaxation spectra
+# Version 1.1, August 2024, tested in Python 3.9.18 with NumPy 1.26.4
+#
 # © Roy Wink, TU Eindhoven, 2024
 #
 # -----------------------------------------------------------------------------
@@ -20,8 +22,8 @@
 
 # ----- ENTER SETTINGS HERE ---------------------------------------------------
 
-data_input  = 'beta with noise\\1_1200_t300_b100_dg001.txt'
-data_output = 'beta with noise\\out_1_1200_t300_b100_dg001.txt'
+data_input  = 'SMP197-stressrelaxation_150oC_1%strain_tikh_in.txt'
+data_output = 'out_SMP197-stressrelaxation_150oC_1%strain.txt'
 
 export_lcurve = True
 
@@ -189,8 +191,8 @@ def l_curve(U, sm, b):
         filename = data_output[:-ffe] + '_lcurve' + data_output[-ffe:]
 
         # save first the optimal parameter, and then the rest.
-        np.savetxt(filename, np.r_[[[reg_corner, rho_c, eta_c]],
-                                   [[float(x), float(y), float(z)] for x, y, z in zip(reg_param, rho, eta)]],
+        np.savetxt(filename, np.r_[[[reg_corner.item(), rho_c, eta_c]],
+                                   [[x.item(), y.item(), z.item()] for x, y, z in zip(reg_param, rho, eta)]],
                    header='first line contains lambda_opt, rho_c, eta_c')
 
     return  reg_corner, rho, eta, reg_param
@@ -497,7 +499,7 @@ def main(data_input, data_output, plot=True):
     """
 
     import_file = np.loadtxt(data_input)
-    # plt.semilogx(import_file[:,0], import_file[:,1])
+    plt.semilogx(import_file[:,0], import_file[:,1])
 
     # generate matrix A and logspace (x axis)
     A, sp = discr(1e-6, 1e8, import_file[:,0])
@@ -526,14 +528,14 @@ def main(data_input, data_output, plot=True):
 
     # print makimum relaxation time
     x_max = np.argmax(x_lambda)
-    print('Maximum relaxation time:   %i' % int(sp[x_max]))
+    print('Maximum relaxation time:   %i' % sp[x_max].item())
 
     # plot the relaxation spectrum
     plt.semilogx(sp, x_lambda)
     plt.show()
 
     # write the data to the file
-    np.savetxt(data_output, [[float(x), float(y)] for x, y in zip(sp, x_lambda)])
+    np.savetxt(data_output, [[float(x.item()), float(y.item())] for x, y in zip(sp, x_lambda)])
 
 
 # ----- MAIN CALL -------------------------------------------------------------
