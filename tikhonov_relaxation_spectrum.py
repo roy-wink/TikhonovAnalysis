@@ -22,17 +22,17 @@
 
 # ----- ENTER SETTINGS HERE ---------------------------------------------------
 
-data_input  = 'SMP197-stressrelaxation_150oC_1%strain_tikh_in.txt'
-data_output = 'out_SMP197-stressrelaxation_150oC_1%strain.txt'
+data_input  = 'path\\input_data.txt'
+data_output = 'path\\output_data.txt'
 
 export_lcurve = True
 
 # -----------------------------------------------------------------------------
 
 import numpy as np
-# import matlab.engine
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize_scalar
+# import matlab.engine
 
 def discr(low, high, times):
     """
@@ -499,7 +499,7 @@ def main(data_input, data_output, plot=True):
     """
 
     import_file = np.loadtxt(data_input)
-    plt.semilogx(import_file[:,0], import_file[:,1])
+    # plt.semilogx(import_file[:,0], import_file[:,1])
 
     # generate matrix A and logspace (x axis)
     A, sp = discr(1e-6, 1e8, import_file[:,0])
@@ -526,7 +526,7 @@ def main(data_input, data_output, plot=True):
     x_lambda, rho, eta = tikhonov(U, sd, V, import_file[:,1],
                                   reg_corner * multiplier, x_0)
 
-    # print makimum relaxation time
+    # print maximum relaxation time
     x_max = np.argmax(x_lambda)
     print('Maximum relaxation time:   %i' % sp[x_max].item())
 
