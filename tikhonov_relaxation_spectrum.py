@@ -22,17 +22,18 @@
 
 # ----- ENTER SETTINGS HERE ---------------------------------------------------
 
-data_input  = 'path\\input_data.txt'
+from scipy.optimize import minimize_scalar
+import matplotlib.pyplot as plt
+import numpy as np
+data_input = 'path\\input_data.txt'
 data_output = 'path\\output_data.txt'
 
 export_lcurve = True
 
 # -----------------------------------------------------------------------------
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import minimize_scalar
 # import matlab.engine
+
 
 def discr(low, high, times):
     """
@@ -68,7 +69,7 @@ def discr(low, high, times):
     # this forms the matrix space for singular value decomposition
     A = np.exp(np.divide(-times_mesh, space_mesh))
 
-    # show matrix A
+    # visualise matrix A
     # plt.imshow(A, interpolation='none')
     # plt.show()
 
@@ -126,8 +127,8 @@ def l_curve(U, sm, b):
 
     Returns:
         Tuple[float, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
-            reg_corner (float): Regularization parameter at the corner of the
-                                L-curve.
+            reg_corner (numpy.ndarray): Regularization parameter at the corner
+                                        of the L-curve. Usually of size 1x1.
             rho (numpy.ndarray): Vector of residual norms.
             eta (numpy.ndarray): Vector of solution norms.
             reg_param (numpy.ndarray): Vector of regularization parameters.
@@ -136,13 +137,13 @@ def l_curve(U, sm, b):
         reg_corner, rho, eta, reg_param = l_curve(U, s, import_file[:,1])
     """
 
-    # number of reg params to be evaluated
+    # number of regularization parameters to be evaluated
     npoints = 200
     # smallest regularization parameter
     smin_ratio = 16 * np.finfo(float).eps
 
     # determination of element lengths
-    m, n = U.shape
+    # m, n = U.shape
     p = sm.shape
 
     # euclidian norm
@@ -183,11 +184,10 @@ def l_curve(U, sm, b):
 
     global export_lcurve
     if export_lcurve:
-        # raise filename
         global data_output
 
         # determine length of the file format extension
-        ffe = len(data_output.split('.')[-1]) + 1
+        ffe = len(data_output.rsplit('.', maxsplit=1)[-1]) + 1
         filename = data_output[:-ffe] + '_lcurve' + data_output[-ffe:]
 
         # save first the optimal parameter, and then the rest.
@@ -195,7 +195,8 @@ def l_curve(U, sm, b):
                                    [[x.item(), y.item(), z.item()] for x, y, z in zip(reg_param, rho, eta)]],
                    header='first line contains lambda_opt, rho_c, eta_c')
 
-    return  reg_corner, rho, eta, reg_param
+    return reg_corner, rho, eta, reg_param
+
 
 def l_corner(rho, eta, reg_param, U, s, b, order=10):
     """
@@ -211,10 +212,10 @@ def l_corner(rho, eta, reg_param, U, s, b, order=10):
         order (int, optional): Order of fitting the 2D spline curve. Defaults to 10.
 
     Returns:
-        Tuple[float, numpy.ndarray, numpy.ndarray]:
-            reg_c (float): Regularization parameter at the corner of the L-curve.
-            rho_c (numpy.ndarray): Vector of residual norms at the corner.
-            eta_c (numpy.ndarray): Vector of solution norms at the corner.
+        Tuple[numpy.ndarray, numpy.float64, numpy.float64]:
+            reg_c (numpy.ndarray): Regularization parameter at the corner of the L-curve.
+            rho_c (numpy.float64): Vector of residual norms at the corner.
+            eta_c (numpy.float64): Vector of solution norms at the corner.
 
     Example:
         reg_corner, rho_c, eta_c = l_corner(rho, eta, reg_param, U, sm, b)
@@ -228,7 +229,7 @@ def l_corner(rho, eta, reg_param, U, s, b, order=10):
     if len(rho) < order:
         raise ValueError('Too little data points for L-curve analysis')
 
-    m, n = U.shape
+    # m, n = U.shape
     beta = U.T @ b
     xi = beta / s
     xi[np.isinf(xi)] = 0
@@ -259,6 +260,7 @@ def l_corner(rho, eta, reg_param, U, s, b, order=10):
 
     return reg_c, rho_c, eta_c
 
+
 def plot_lc(rho, eta, reg_param, reg_corner, rho_c, eta_c):
     """
     Plot the L-shaped curve of the solution norm.
@@ -270,10 +272,10 @@ def plot_lc(rho, eta, reg_param, reg_corner, rho_c, eta_c):
     Args:
         rho (numpy.ndarray): Vector of residual norms.
         eta (numpy.ndarray): Vector of solution or semi-norms.
-        reg_param (numpy.ndarray, optional): Vector of regularization parameters.
-        reg_corner (float, optional): Regularization parameter at the corner of the L-curve.
-        rho_c (numpy.ndarray, optional): Vector of residual norms at the corner.
-        eta_c (numpy.ndarray, optional): Vector of solution norms at the corner.
+        reg_param (numpy.ndarray): Vector of regularization parameters.
+        reg_corner (numpy.ndarray): Regularization parameter at the corner of the L-curve.
+        rho_c (numpy.float64): Vector of residual norms at the corner.
+        eta_c (numpy.float64): Vector of solution norms at the corner.
 
     Returns:
         None
@@ -290,7 +292,7 @@ def plot_lc(rho, eta, reg_param, reg_corner, rho_c, eta_c):
     ni = round(n / num_p)
 
     # make plot
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.loglog(rho[1:-1], eta[1:-1])
     ax.set_xlim([10 ** np.floor(np.log10(np.min(rho))),
                  10 ** np.ceil(np.log10(np.max(rho)))])
@@ -324,6 +326,7 @@ def plot_lc(rho, eta, reg_param, reg_corner, rho_c, eta_c):
 
     return None
 
+
 def lcfun(lambda_, s, beta, xi):
     """
     Compute the negative curvature as an auxiliary routine for l_corner.
@@ -336,7 +339,7 @@ def lcfun(lambda_, s, beta, xi):
         xi (numpy.ndarray): Vector of solution norms.
 
     Returns:
-        g (numpy.ndarray): The negative curvature.
+        g (numpy.ndarray): The negative curvature. Same size as lambda_.
     """
 
     # initialization
@@ -356,16 +359,16 @@ def lcfun(lambda_, s, beta, xi):
         LS = False
         rhoLS2 = 0
 
-    for i in range(len(lambda_)):
+    for i, this_lambda_ in enumerate(lambda_):
         if len(xi.shape) > 1:
-            f = (s**2)/(s**2 + lambda_[i]**2)
+            f = (s**2)/(s**2 + this_lambda_**2)
         else:
-            f = s/(s + lambda_[i])
+            f = s/(s + this_lambda_)
         cf = 1 - f
         eta[i] = np.linalg.norm(f*xi)
         rho[i] = np.linalg.norm(cf*beta)
-        f1 = -2*f*cf/lambda_[i]
-        f2 = -f1*(3-4*f)/lambda_[i]
+        f1 = -2*f*cf/this_lambda_
+        f2 = -f1*(3-4*f)/this_lambda_
         phi[i] = np.sum(f*f1*np.abs(xi)**2)
         psi[i] = np.sum(cf*f1*np.abs(beta)**2)
         dphi[i] = np.sum((f1**2 + f*f2)*np.abs(xi)**2)
@@ -446,17 +449,22 @@ def tikhonov(U, s, V, b, lambda_, x_0=None):
     for i in range(ll):
         if x_0 is None:
             x_lambda[:, i] = V[:, :p] * (zeta / (s ** 2 + lambda_[i] ** 2))
-            rho[i] = lambda_[i] ** 2 * np.linalg.norm(beta / (s ** 2 + lambda_[i] ** 2))
+            rho[i] = lambda_[i] ** 2 * \
+                np.linalg.norm(beta / (s ** 2 + lambda_[i] ** 2))
         else:
-            x_lambda[:, i] = V[:, :p] @ ((zeta + lambda_[i] ** 2 * omega) / (s ** 2 + lambda_[i] ** 2))
-            rho[i] = lambda_[i] ** 2 * np.linalg.norm((beta - s * omega) / (s ** 2 + lambda_[i] ** 2))
+            x_lambda[:, i] = V[:, :p] @ ((zeta + lambda_[i]
+                                         ** 2 * omega) / (s ** 2 + lambda_[i] ** 2))
+            rho[i] = lambda_[i] ** 2 * \
+                np.linalg.norm((beta - s * omega) / (s ** 2 + lambda_[i] ** 2))
 
         eta[i] = np.linalg.norm(x_lambda[:, i])
 
     if len(np.shape(U)) > 1 and np.shape(U)[1] > p:
-        rho = np.sqrt(rho ** 2 + np.linalg.norm(b - U[:, :n] @ np.concatenate((beta, U[:, p:n].T @ b))) ** 2)
+        rho = np.sqrt(rho ** 2 + np.linalg.norm(b -
+                      U[:, :n] @ np.concatenate((beta, U[:, p:n].T @ b))) ** 2)
 
     return x_lambda, rho, eta
+
 
 def import_variable(filename):
     """
@@ -488,8 +496,9 @@ def main(data_input, data_output, plot=True):
 
     Args:
         data_input (str): Name of file containing input data.
-        data_output (Any): Name of file where solution will be written to.
+        data_output (str): Name of file where solution will be written to.
         plot (bool, optional): Flag for plotting. Defaults to True.
+                               Not in use in current version.
 
     Returns:
         None
@@ -502,7 +511,7 @@ def main(data_input, data_output, plot=True):
     # plt.semilogx(import_file[:,0], import_file[:,1])
 
     # generate matrix A and logspace (x axis)
-    A, sp = discr(1e-6, 1e8, import_file[:,0])
+    A, sp = discr(1e-6, 1e8, import_file[:, 0])
 
     # execute singular value decomposition
     U, s, V = csvd(A, False)
@@ -514,7 +523,7 @@ def main(data_input, data_output, plot=True):
         sd = s
 
     # obtain the l-curve and find the l-corner
-    reg_corner, *_ = l_curve(U, sd, import_file[:,1])
+    reg_corner, *_ = l_curve(U, sd, import_file[:, 1])
     print('Regularization parameter:  %.3e' % reg_corner[0])
 
     # create empty solution vector
@@ -523,7 +532,7 @@ def main(data_input, data_output, plot=True):
 
     # employ Tikhonov analysis
     multiplier = 1e0
-    x_lambda, rho, eta = tikhonov(U, sd, V, import_file[:,1],
+    x_lambda, rho, eta = tikhonov(U, sd, V, import_file[:, 1],
                                   reg_corner * multiplier, x_0)
 
     # print maximum relaxation time
@@ -535,7 +544,10 @@ def main(data_input, data_output, plot=True):
     plt.show()
 
     # write the data to the file
-    np.savetxt(data_output, [[float(x.item()), float(y.item())] for x, y in zip(sp, x_lambda)])
+    np.savetxt(data_output, [[float(x.item()), float(y.item())]
+               for x, y in zip(sp, x_lambda)])
+
+    return None
 
 
 # ----- MAIN CALL -------------------------------------------------------------
